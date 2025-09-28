@@ -1417,9 +1417,13 @@ func (s *Server) GenerateRoutes(rc *ollama.Registry) (http.Handler, error) {
 
 	// General
 	r.HEAD("/", func(c *gin.Context) { c.String(http.StatusOK, "Ollama is running") })
-	r.GET("/", func(c *gin.Context) { c.String(http.StatusOK, "Ollama is running") })
+	r.GET("/", s.WebInterfaceHandler)
 	r.HEAD("/api/version", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"version": version.Version}) })
 	r.GET("/api/version", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"version": version.Version}) })
+	
+	// Kindroid AI Clone Web Interface
+	r.GET("/kindroid", s.KindroidHandler)
+	r.Static("/web", "./web")
 
 	// Local model cache management (new implementation is at end of function)
 	r.POST("/api/pull", s.PullHandler)
@@ -2135,4 +2139,22 @@ func filterThinkTags(msgs []api.Message, m *Model) []api.Message {
 		}
 	}
 	return msgs
+}
+
+// WebInterfaceHandler redirects root to the Kindroid AI interface
+func (s *Server) WebInterfaceHandler(c *gin.Context) {
+	// Check if this is from a browser (looking for text/html accept header)
+	accept := c.GetHeader("Accept")
+	if strings.Contains(accept, "text/html") {
+		c.Redirect(http.StatusTemporaryRedirect, "/kindroid")
+		return
+	}
+	// Default behavior for API clients
+	c.String(http.StatusOK, "Ollama is running")
+}
+
+// KindroidHandler serves the Kindroid AI Clone web interface
+func (s *Server) KindroidHandler(c *gin.Context) {
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.File("./web/index.html")
 }
